@@ -6,7 +6,45 @@
 #include <iostream>
 #include "GameObject.h"
 
-
+void update(SDLState& state, Resourses& rs, SnakeState& sn,float deltatime)
+{
+	float moveDelay = 0.1f;
+	sn.moveTimer += deltatime;
+	if (sn.moveTimer >= moveDelay)
+	{
+		sn.moveTimer -= moveDelay;
+		switch (sn.dir)
+		{
+		case SnakeDirection::LEFT:
+		{
+			sn.headPos.x -= PIXELS;
+			sn.snakeTexture = rs.headLeftTex;
+			break;
+		}
+		case SnakeDirection::RIGHT:
+		{
+			sn.headPos.x += PIXELS;
+			sn.snakeTexture = rs.headRightTex;
+			break;
+		}
+		case SnakeDirection::DOWN:
+		{
+			sn.headPos.y += PIXELS;
+			sn.snakeTexture = rs.headDownTex;
+			break;
+		}
+		case SnakeDirection::UP:
+		{
+			sn.headPos.y -= PIXELS;
+			sn.snakeTexture = rs.headUpTex;
+			break;
+		}
+		}
+	}
+	SDL_RenderTexture(state.renderer, sn.snakeTexture, nullptr, &sn.headPos);
+	//SDL_SetRenderDrawColor(state.renderer,255,0,0,255);
+	//SDL_RenderFillRect(state.renderer,&sn.headPos);
+}
 SDL_Texture* loadTexture(SDLState& state, Resourses& rs, const std::string& path)
 {
 	SDL_Texture* tex;
@@ -20,7 +58,7 @@ SDL_Texture* loadTexture(SDLState& state, Resourses& rs, const std::string& path
 	return tex;
 };
 //initiliaze, create window and renderer
-bool initiliaze(SDLState& state,Resourses& rs)
+bool initiliaze(SDLState& state,Resourses& rs,SnakeState& sn)
 {
 	bool succes = true;
 	if (!SDL_Init(SDL_INIT_VIDEO))
@@ -38,11 +76,17 @@ bool initiliaze(SDLState& state,Resourses& rs)
 	}
 	SDL_SetRenderLogicalPresentation(state.renderer,state.windowWidth,state.windowHeight,SDL_LOGICAL_PRESENTATION_LETTERBOX);
 
-	rs.headTex = loadTexture(state,rs,"head_right.png");
-	if (!rs.headTex)
-	{
-		return false;
-	}
+	rs.headRightTex = loadTexture(state,rs,"head_right.png");
+	rs.headLeftTex = loadTexture(state,rs,"head_left.png");
+	rs.headDownTex = loadTexture(state, rs, "head_down.png");
+	rs.headUpTex = loadTexture(state, rs, "head_up.png");
+	//
+
+
+	rs.headRightTex->w = PIXELS;
+	rs.headRightTex->h = PIXELS;
+	sn.snakeTexture = rs.headRightTex;
+
 	return succes;
 
 };
