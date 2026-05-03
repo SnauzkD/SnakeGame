@@ -5,7 +5,111 @@
 
 #include <iostream>
 #include "GameObject.h"
+struct Resourses
+{
+	SDL_Texture* snakeHead, * snakeBody, * food, * background,*menuBackground,*startButton,*optionsButton,*exitButton;
+	std::vector<SDL_Texture*> textures;
+	SDL_FRect backgroundRect, menuBackgroundRect, startButtonRect,exitButtonRect,optionButtonRect;
+	MIX_Mixer* mixer;
+	std::vector<MIX_Audio*> audios;
+	MIX_Audio* eatFoodAudio, * backgroundMusic;
 
+	MIX_Audio* loadAudios(const std::string& filePath)
+	{
+		MIX_Audio* audio = MIX_LoadAudio(mixer, filePath.c_str(), false);
+		audios.push_back(audio);
+		return audio;
+	}
+	SDL_Texture* loadTexture(SDLState& state, Resourses& rs, const std::string& path)
+	{
+		SDL_Texture* tex;
+		tex = IMG_LoadTexture(state.renderer, path.c_str());
+		if (!tex)
+		{
+			std::cout << "Texture is NULL" << std::endl;
+		}
+		SDL_SetTextureScaleMode(tex, SDL_SCALEMODE_NEAREST);
+		rs.textures.push_back(tex);
+		return tex;
+	}
+	//initiliaze, create window and renderer
+	bool load(SDLState& state, Resourses& rs, SnakeState& sn)
+	{
+		bool succes = true;
+		if (!SDL_Init(SDL_INIT_VIDEO))
+		{
+			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", SDL_GetError(), state.window);
+			succes = false;
+			return succes;
+		}
+		if (!SDL_CreateWindowAndRenderer("SnakeGame", state.windowWidth,
+			state.windowHeight, SDL_WINDOW_RESIZABLE, &state.window, &state.renderer))
+		{
+			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", SDL_GetError(), state.window);
+			succes = false;
+			return succes;
+		}
+		if (!MIX_Init())
+		{
+			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "Failed to init MIX", nullptr);
+			succes = false;
+			return succes;
+		}
+		mixer = MIX_CreateMixerDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, nullptr);
+		if (!mixer)
+		{
+			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", SDL_GetError(), nullptr);
+			succes = false;
+			return succes;
+		}
+		
+		SDL_SetRenderLogicalPresentation(state.renderer, state.windowWidth, state.windowHeight, SDL_LOGICAL_PRESENTATION_LETTERBOX);
+
+		MIX_SetMixerGain(mixer, 0.3f);
+		rs.backgroundRect = { .x = 0, .y = 0, .w = state.windowWidth,.h = state.windowHeight };
+		rs.menuBackgroundRect = { .x = 0, .y = 0, .w = state.windowWidth,.h = state.windowHeight };
+		rs.startButtonRect = { .x = state.windowWidth / 2  - 75 , .y = state.windowHeight / 2 - 75, .w = 150,.h = 50 };
+		rs.optionButtonRect = { .x = state.windowWidth / 2 - 75 , .y = state.windowHeight / 2 + 5, .w = 150,.h = 50 };
+		rs.exitButtonRect = { .x = state.windowWidth / 2 - 75 , .y = state.windowHeight / 2 + 75, .w = 150,.h = 50 };
+		rs.snakeHead = loadTexture(state, rs, "snake_head.png");
+		rs.snakeBody = loadTexture(state, rs, "snake_body.png");
+		rs.food = loadTexture(state, rs, "food.png");
+		rs.background = loadTexture(state, rs, "background.png");
+		rs.menuBackground = loadTexture(state,rs,"main_menu.png");
+		rs.startButton = loadTexture(state,rs,"start_button.png");
+		rs.exitButton = loadTexture(state,rs,"exit_button.png");
+		rs.optionsButton = loadTexture(state,rs,"options_button.png");
+
+		rs.eatFoodAudio = loadAudios("eating_apple.wav");
+		rs.backgroundMusic = loadAudios("background_music_1.mp3");
+		//
+		sn.score = 0;
+		sn.bodyPos.clear();
+		sn.history.push_back(SDL_FPoint{ .x = 48,.y = 0 });
+		sn.history.push_back(SDL_FPoint{ .x = 72,.y = 0 });
+		sn.history.push_back(SDL_FPoint{ .x = 96,.y = 0 });
+
+		for (int i = 0; i < 3; i++)
+		{
+			sn.bodyPos.push_back(SDL_FRect(sn.history[i].x, sn.history[i].y, PIXELS, PIXELS));
+		}
+
+		return succes;
+
+	}
+	void unload(SDLState& state, Resourses& rs, SnakeState& sn)
+	{
+		for (auto* tex : rs.textures)
+		{
+			SDL_DestroyTexture(tex);
+		}
+		for (auto* audio : rs.audios)
+		{
+			MIX_DestroyAudio(audio);
+		}
+	}
+};
+//this function run every frame and update all objects on screen
 void update(SDLState& state, Resourses& rs, SnakeState& sn,float deltatime)
 {
 	float moveDelay = 0.1f;
@@ -13,83 +117,89 @@ void update(SDLState& state, Resourses& rs, SnakeState& sn,float deltatime)
 	if (sn.moveTimer >= moveDelay)
 	{
 		sn.moveTimer -= moveDelay;
-		switch (sn.dir)
+		sn.history.push_back(SDL_FPoint(sn.headPos.x,sn.headPos.y));
+		switch (sn.currDir)
 		{
 		case SnakeDirection::LEFT:
 		{
 			sn.headPos.x -= PIXELS;
-			sn.snakeTexture = rs.headLeftTex;
 			break;
 		}
 		case SnakeDirection::RIGHT:
 		{
 			sn.headPos.x += PIXELS;
-			sn.snakeTexture = rs.headRightTex;
 			break;
 		}
 		case SnakeDirection::DOWN:
 		{
 			sn.headPos.y += PIXELS;
-			sn.snakeTexture = rs.headDownTex;
 			break;
 		}
 		case SnakeDirection::UP:
 		{
 			sn.headPos.y -= PIXELS;
-			sn.snakeTexture = rs.headUpTex;
 			break;
 		}
 		}
+		for (int i = 0; i < sn.foods.size(); i++)
+		{
+			if (sn.headPos.x == sn.foods[i].x
+				&& sn.headPos.y == sn.foods[i].y)
+			{
+				MIX_PlayAudio(rs.mixer, rs.eatFoodAudio);
+				sn.bodyPos.push_back(SDL_FRect(sn.history.back().x, sn.history.back().y, PIXELS, PIXELS));
+				sn.foods.erase(sn.foods.begin() + i);
+				sn.count--;
+				sn.score++;
+			}
+		}
+		for (int i = 0; i < sn.bodyPos.size(); i++)
+		{
+			if (sn.headPos.x == sn.bodyPos[i].x
+				&& sn.headPos.y == sn.bodyPos[i].y)
+			{
+				SDL_DestroyWindow(state.window);
+			}
+		}
+		
 	}
-	SDL_RenderTexture(state.renderer, sn.snakeTexture, nullptr, &sn.headPos);
-	//SDL_SetRenderDrawColor(state.renderer,255,0,0,255);
-	//SDL_RenderFillRect(state.renderer,&sn.headPos);
+	if (sn.history.size() > 200)
+	{
+		sn.history.erase(sn.history.begin());
+	}
+
+	for (int i = 0; i < sn.bodyPos.size(); i++)
+	{
+		int idx = (int)sn.history.size() - 1 - i;
+		if (idx >= 0)
+		{
+			sn.bodyPos[i].x = sn.history[idx].x;
+			sn.bodyPos[i].y = sn.history[idx].y;
+		}
+
+	}
+
+
+	//checking if the snake is on the screen
+	if (sn.headPos.x >= state.windowWidth)
+	{
+		sn.headPos.x = 0;
+	}
+	else if (sn.headPos.x < 0)
+	{
+		sn.headPos.x = state.windowWidth - PIXELS;
+	}
+	if (sn.headPos.y >= state.windowHeight)
+	{
+		sn.headPos.y = 0;
+	}
+	else if (sn.headPos.y < 0)
+	{
+		sn.headPos.y = state.windowHeight - PIXELS;
+	}
+
 }
-SDL_Texture* loadTexture(SDLState& state, Resourses& rs, const std::string& path)
-{
-	SDL_Texture* tex;
-	tex = IMG_LoadTexture(state.renderer, path.c_str());
-	if (!tex)
-	{
-		std::cout << "Texture is NULL" << std::endl;
-	}
-	SDL_SetTextureScaleMode(tex, SDL_SCALEMODE_NEAREST);
-	rs.textures.push_back(tex);
-	return tex;
-};
-//initiliaze, create window and renderer
-bool initiliaze(SDLState& state,Resourses& rs,SnakeState& sn)
-{
-	bool succes = true;
-	if (!SDL_Init(SDL_INIT_VIDEO))
-	{
-		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", SDL_GetError(), state.window);
-		succes = false;
-		return succes;
-	}
-	if (!SDL_CreateWindowAndRenderer("SnakeGame", state.windowWidth,
-		state.windowHeight, SDL_WINDOW_RESIZABLE, &state.window, &state.renderer))
-	{
-		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", SDL_GetError(), state.window);
-		succes = false;
-		return succes;
-	}
-	SDL_SetRenderLogicalPresentation(state.renderer,state.windowWidth,state.windowHeight,SDL_LOGICAL_PRESENTATION_LETTERBOX);
 
-	rs.headRightTex = loadTexture(state,rs,"head_right.png");
-	rs.headLeftTex = loadTexture(state,rs,"head_left.png");
-	rs.headDownTex = loadTexture(state, rs, "head_down.png");
-	rs.headUpTex = loadTexture(state, rs, "head_up.png");
-	//
-
-
-	rs.headRightTex->w = PIXELS;
-	rs.headRightTex->h = PIXELS;
-	sn.snakeTexture = rs.headRightTex;
-
-	return succes;
-
-};
 //this function run when program is end
 void cleanup(SDLState& state,Resourses& rs)
 {
@@ -99,6 +209,39 @@ void cleanup(SDLState& state,Resourses& rs)
 	for (auto i : rs.textures)
 	{
 		SDL_DestroyTexture(i);
+	}
+}
+void spawnFood(SDLState& state, Resourses& rs, SnakeState& sn)
+{
+	int attempts = 0;
+	while(sn.count < 5 && attempts < 100)
+	{
+		attempts++;
+		for (int i = sn.count; i < 5; i++)
+		{
+			bool canSpawn = true;
+			int x = ((SDL_rand((state.windowWidth / 24))) * PIXELS) - PIXELS;
+			int y = ((SDL_rand((state.windowHeight / 24))) * PIXELS) - PIXELS;
+			for (int j = 0; j < sn.bodyPos.size(); j++)
+			{
+				if ((x == sn.bodyPos[j].x && y == sn.bodyPos[j].y) ||
+					(x == sn.headPos.x && y == sn.headPos.y))
+				{
+					canSpawn = false;
+					break;
+				}
+			}
+			if (canSpawn)
+			{
+				sn.foods.push_back(SDL_FRect(x, y, PIXELS, PIXELS));
+				sn.count++;
+			}
+			else
+			{
+				i--;
+				continue;
+			}
+		}
 	}
 }
 // TODO: Reference additional headers your program requires here.

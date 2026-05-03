@@ -1,7 +1,5 @@
 ﻿# CMakeList.txt : CMake project for SnakeGame, include source and define
 # project specific logic here.
-set(SDL3_image_DIR "D:/SDL3Install/SDL3_image-devel-3.1.0-VC/SDL3_image-3.1.0/cmake")
-set(SDL3_mixer_DIR "D:/SDL3Install/SDL3_mixer-devel-3.2.0-VC/SDL3_mixer-3.2.0/cmake")
 find_package(SDL3_image REQUIRED)
 find_package(SDL3 REQUIRED)
 find_package(SDL3_ttf REQUIRED)
