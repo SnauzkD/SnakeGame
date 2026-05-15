@@ -352,7 +352,7 @@ int main(int arvc, char* argv[])
 			case SDL_EVENT_MOUSE_MOTION:
 			{
 				//
-
+				SDL_ConvertEventToRenderCoordinates(state.renderer, &event);
 				if (currentState == GameState::OPTION)
 				{
 					//chaning volume of music by dragging volume handler
