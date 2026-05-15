@@ -24,4 +24,9 @@ A Snake Game written in C++ using SDL3
 - ESC to pause
 
 ## Build
-Open Visual Studio solution and run.
+```bash
+git clone <repo-url>
+cd SnakeGame
+
+cmake -B build
+cmake --build build
