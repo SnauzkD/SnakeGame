@@ -7,7 +7,7 @@
 #include <vector>
 #include <format>
 #include <fstream>
-//all programs data is here
+//all programs data in GameObject.h
 static const int PIXELS = 24;
 enum class GameState
 {
@@ -16,7 +16,8 @@ enum class GameState
 	EXIT,
 	PAUSE,
 	DEAD,
-	OPTION
+	OPTION,
+	VIEW
 };
 GameState currentState = GameState::MENU;
 enum class SnakeDirection
@@ -26,18 +27,31 @@ enum class SnakeDirection
 	RIGHT,
 	UP
 };
+enum class DifficultMode
+{
+	EASY,
+	MEDIUM,
+	HARD
+};
+enum class LevelState
+{
+	LEVEL1,
+	LEVEL2,
+	LEVEL3,
+	LEVEL4,
+	LEVEL5
+};
+struct LevelData
+{
+	LevelState levelState;
+	std::vector<SDL_FRect> walls;
+};
 struct SDLState
 {
 	SDL_Window* window;
 	SDL_Renderer* renderer;
 	float windowWidth = 22 * PIXELS;
 	float windowHeight = 18 * PIXELS;
-};
-enum class DifficultMode
-{
-	EASY,
-	MEDIUM,
-	HARD
 };
 struct SnakeState
 {
@@ -47,11 +61,13 @@ struct SnakeState
 	std::vector<SDL_FRect> foods;
 	SnakeDirection currDir = SnakeDirection::RIGHT;
 	DifficultMode mode = DifficultMode::MEDIUM;
+	LevelState currLevel = LevelState::LEVEL1;
 	float moveTimer = 0.0f;
 	int score = 0;
 	int bestscore = 0;
 	bool dead = false;
 	std::string difficulty = "medium";
+	std::string level = "1";
 	float moveDelay = 0.2f;
 };
 
@@ -60,9 +76,15 @@ struct VolumeSlider
 	SDL_FRect bar;
 	SDL_FRect handler;
 
+	float handlerPos;
 	float value = 0.0f;
 
 	bool dragging = false;
+};
+struct Button
+{
+	SDL_FRect position;
+	std::string text;
 };
 struct DifficultyButton
 {
@@ -71,6 +93,6 @@ struct DifficultyButton
 };
 struct SaveData
 {
-	int highscore = 0;
 	float volume = 0;
+	float handlerPos = 30;
 };
